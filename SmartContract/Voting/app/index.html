@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Voting - Truffle Webpack Demo w/ Frontend</title>
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="./app.js"></script>
+</head>
+<body>
+  <h1>Voting</h1>
+  <h2>Example Voting Contract</h2>
+  <h3>Have <span class="black"><span id="voters"></span> voters</span></h3>
+
+  <br>
+  <h1>Add Option</h1>
+  <br><label for="optionname">Name:</label><input type="text" id="optionname" placeholder="e.g., go"></input>
+  <br><label for="optiondesc">Desc:</label><input type="text" id="optiondesc" placeholder="e.g., party at 9pm today"></input>
+  <br><br><button class="btn btn-default btn-add-option">Add Option</button>
+  <br><br>
+
+  <br>
+  <h1>Remove Option</h1>
+  <br><label for="removeoptionid">Name:</label><input type="text" id="removeoptionid" placeholder="e.g., 0"></input>
+  <br><br><button class="btn btn-default btn-remove-option">Remove Option</button>
+  <br><br>
+
+  <br>
+  <h1>Vote</h1>
+  <br><label for="username">User Name:</label><input type="text" id="username" placeholder="e.g., mikele"></input>
+  <br><label for="optionid">Option:</label><input type="text" id="optionid" placeholder="e.g., 0"></input>
+  <br><br><button class="btn btn-default btn-vote">Vote</button>
+  <br><br>
+
+  <br>
+  <h1>Get number votes</h1>
+  <br><label for="numbervotesoptionid">Option ID:</label><input type="text" id="numbervotesoptionid" placeholder="e.g., 0"></input>
+  <br><br><button class="btn btn-default btn-get-number-votes">Get</button>
+  <br><br>
+
+  <span id="status"></span>
+  <br>
+  <span class="hint"><strong>Hint:</strong> open the browser developer console to view any errors and warnings.</span>
+</body>
+</html>
