@@ -114,21 +114,45 @@ contract KyVote {
   }
 
   // Remove whitelisted addresses
+  // Remove an address will also remove all of its voted options
   function removeWhitelistedAddresses(uint campaignID, address[] addresses) public payable {
     require(campaignID < numberCampaigns && campaignID >= 0, "Campaign does not exist");
-    require(campaigns[campaignID].admin == msg.sender, "Only campaign admin can call this function");
+    Campaign storage camp = campaigns[campaignID];
+    require(camp.admin == msg.sender, "Only campaign admin can call this function");
     // An easy way to test
-    address[] memory whitelisted = campaigns[campaignID].whitelistedAddresses;
+    address[] memory whitelisted = camp.whitelistedAddresses;
     for (uint ii0 = 0; ii0 < addresses.length; ii0++) {
       whitelisted = removeAnElementFromArrayIfNeeded(whitelisted, addresses[ii0]);
+      // Remove this address out of voters for each option in this campaign if needed
+      for(uint j0 = 0; j0 < camp.optionCount; j0++) {
+        Option storage op1 = camp.options[j0];
+        op1.voters = removeAnElementFromArrayIfNeeded(op1.voters, addresses[ii0]);
+      }
     }
-    campaigns[campaignID].whitelistedAddresses = whitelisted;
+    camp.whitelistedAddresses = whitelisted;
   }
 
   // Override list of whitelisted addresses
   function updateNewWhitelistedAddresses(uint campaignID, address[] addresses) public payable {
     require(campaignID < numberCampaigns && campaignID >= 0, "Campaign does not exist");
-    require(campaigns[campaignID].admin == msg.sender, "Only campaign admin can call this function");
+    Campaign storage camp = campaigns[campaignID];
+    require(camp.admin == msg.sender, "Only campaign admin can call this function");
+    for (uint ii1 = 0; ii1 < camp.whitelistedAddresses.length; ii1++) {
+      bool _contain = false;
+      for(uint ii2 = 0; ii2 < addresses.length; ii2++) {
+        if (addresses[ii2] == camp.whitelistedAddresses[ii1]) {
+          _contain = true; break;
+        }
+      }
+      if (!_contain) {
+        // new whitelisted addresses does not contain the address camp.whitelistedAddresses[ii1]
+        // Check each option in campaign, if this address has voted for the option, then unvote it
+        for(uint jj0 = 0; jj0 < camp.optionCount; jj0++) {
+          Option storage op1 = camp.options[jj0];
+          op1.voters = removeAnElementFromArrayIfNeeded(op1.voters, camp.whitelistedAddresses[ii1]);
+        }
+      }
+    }
     campaigns[campaignID].whitelistedAddresses = addresses;
   }
 
