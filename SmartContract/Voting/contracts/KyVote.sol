@@ -111,11 +111,10 @@ contract KyVote {
       optionCount: optionNames.length,
       whitelistedAddresses: whitelistedAddresses
     });
-    address[] memory voters = new address[](0);
     // Adding list options to new campaign
     for(uint i = 0; i < optionNames.length; i++) {
       // Option ID is started from 0, map option ID to new option
-      campaigns[campaignID].options[i] = Option({id: i, name: optionNames[i], url: optionURLs[i], voters: voters});
+      campaigns[campaignID].options[i] = Option({id: i, name: optionNames[i], url: optionURLs[i], voters: new address[](0)});
     }
     emit AddCampaign(campaignID);
     return campaignID;
@@ -204,7 +203,7 @@ contract KyVote {
     require(whitelisted == true, "Only whitelisted account can vote");
     // Adding the voter ID to list of voters for each voted option
     for (i = 0; i < optionIDs.length; i++) {
-      require(optionIDs[i] >= 0 && optionIDs[i] < camp.optionCount, "Voted options should be in the list of options");
+      require(optionIDs[i] < camp.optionCount, "Voted options should be in the list of options");
       Option storage op1 = camp.options[optionIDs[i]];
       // add voter to voters list if needed
       op1.voters = addNewElementToArrayIfNeeded(op1.voters, msg.sender);
@@ -241,9 +240,10 @@ contract KyVote {
 
     // Add list of active campaigns to results list
     uint[] memory results = new uint[](count);
+    count = 0;
     for (i = 0; i < numberCampaigns; i++) {
       if (campaigns[i].end > now) {
-        results[--count] = i;
+        results[count++] = i;
       }
     }
     return results;
@@ -261,10 +261,9 @@ contract KyVote {
     );
   }
 
-  // get whitelisted addresses, only allow admin of the campaign
+  // get whitelisted addresses
   function getCampaignWhitelistedAddresses(uint campaignID) public view returns (address[]) {
     require(campaignID < numberCampaigns);
-    require(campaigns[campaignID].admin == msg.sender);
     return campaigns[campaignID].whitelistedAddresses;
   }
 
