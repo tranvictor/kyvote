@@ -113,9 +113,9 @@ contract KyVote {
     });
     address[] memory voters = new address[](0);
     // Adding list options to new campaign
-    for(uint i0 = 0; i0 < optionNames.length; i0++) {
+    for(uint i = 0; i < optionNames.length; i++) {
       // Option ID is started from 0, map option ID to new option
-      campaigns[campaignID].options[i0] = Option({id: i0, name: optionNames[i0], url: optionURLs[i0], voters: voters});
+      campaigns[campaignID].options[i] = Option({id: i, name: optionNames[i], url: optionURLs[i], voters: voters});
     }
     emit AddCampaign(campaignID);
     return campaignID;
@@ -128,8 +128,8 @@ contract KyVote {
     require(camp.admin == msg.sender, "Only campaign admin can call this function");
     // An easy way to test
     address[] memory whitelisted = camp.whitelistedAddresses;
-    for (uint ii0 = 0; ii0 < addresses.length; ii0++) {
-      whitelisted = addNewElementToArrayIfNeeded(whitelisted, addresses[ii0]);
+    for (uint i = 0; i < addresses.length; i++) {
+      whitelisted = addNewElementToArrayIfNeeded(whitelisted, addresses[i]);
     }
     camp.whitelistedAddresses = whitelisted;
   }
@@ -142,12 +142,12 @@ contract KyVote {
     require(camp.admin == msg.sender, "Only campaign admin can call this function");
     // An easy way to test
     address[] memory whitelisted = camp.whitelistedAddresses;
-    for (uint ii0 = 0; ii0 < addresses.length; ii0++) {
-      whitelisted = removeAnElementFromArrayIfNeeded(whitelisted, addresses[ii0]);
+    for (uint i = 0; i < addresses.length; i++) {
+      whitelisted = removeAnElementFromArrayIfNeeded(whitelisted, addresses[i]);
       // Remove this address out of voters for each option in this campaign if needed
-      for(uint j0 = 0; j0 < camp.optionCount; j0++) {
-        Option storage op1 = camp.options[j0];
-        op1.voters = removeAnElementFromArrayIfNeeded(op1.voters, addresses[ii0]);
+      for(uint j = 0; j < camp.optionCount; j++) {
+        Option storage op1 = camp.options[j];
+        op1.voters = removeAnElementFromArrayIfNeeded(op1.voters, addresses[i]);
       }
     }
     camp.whitelistedAddresses = whitelisted;
@@ -158,19 +158,19 @@ contract KyVote {
     require(campaignID < numberCampaigns, "Campaign does not exist");
     Campaign storage camp = campaigns[campaignID];
     require(camp.admin == msg.sender, "Only campaign admin can call this function");
-    for (uint ii1 = 0; ii1 < camp.whitelistedAddresses.length; ii1++) {
+    for (uint i = 0; i < camp.whitelistedAddresses.length; i++) {
       bool _contain = false;
-      address addr = camp.whitelistedAddresses[ii1];
-      for(uint ii2 = 0; ii2 < addresses.length; ii2++) {
-        if (addresses[ii2] == addr) {
+      address addr = camp.whitelistedAddresses[i];
+      for(uint j = 0; j < addresses.length; j++) {
+        if (addresses[j] == addr) {
           _contain = true; break;
         }
       }
       if (!_contain) {
         // new whitelisted addresses does not contain the address camp.whitelistedAddresses[ii1]
         // Check each option in campaign, if this address has voted for the option, then unvote it
-        for(uint jj0 = 0; jj0 < camp.optionCount; jj0++) {
-          Option storage op1 = camp.options[jj0];
+        for(j = 0; j < camp.optionCount; j++) {
+          Option storage op1 = camp.options[j];
           op1.voters = removeAnElementFromArrayIfNeeded(op1.voters, addr);
         }
       }
@@ -194,31 +194,31 @@ contract KyVote {
     if (!camp.isMultipleChoices) {
       require(optionIDs.length <= 1, "Can not vote multi options for none multi choices campaign"); // not multiple choices, then can not vote for more than 1 option
     }
-    uint i1;
+    uint i;
     bool whitelisted = false;
-    for (i1 = 0; i1 < camp.whitelistedAddresses.length; i1++) {
-      if (camp.whitelistedAddresses[i1] == msg.sender) {
+    for (i = 0; i < camp.whitelistedAddresses.length; i++) {
+      if (camp.whitelistedAddresses[i] == msg.sender) {
         whitelisted = true; break;
       }
     }
     require(whitelisted == true, "Only whitelisted account can vote");
     // Adding the voter ID to list of voters for each voted option
-    for (i1 = 0; i1 < optionIDs.length; i1++) {
-      require(optionIDs[i1] >= 0 && optionIDs[i1] < camp.optionCount, "Voted options should be in the list of options");
-      Option storage op1 = camp.options[optionIDs[i1]];
+    for (i = 0; i < optionIDs.length; i++) {
+      require(optionIDs[i] >= 0 && optionIDs[i] < camp.optionCount, "Voted options should be in the list of options");
+      Option storage op1 = camp.options[optionIDs[i]];
       // add voter to voters list if needed
       op1.voters = addNewElementToArrayIfNeeded(op1.voters, msg.sender);
     }
     // use contains to check if an option is in the list new voted options
     bool[] memory contains = new bool[](camp.optionCount);
     uint optionCount = camp.optionCount;
-    for(i1 = 0; i1 < optionCount; i1++) { contains[i1] = false; }
-    for(i1 = 0; i1 < optionIDs.length; i1++) { contains[optionIDs[i1]] = true; }
-    for (i1 = 0; i1 < optionCount; i1++) {
-      if (!contains[i1]) {
+    for(i = 0; i < optionCount; i++) { contains[i] = false; }
+    for(i = 0; i < optionIDs.length; i++) { contains[optionIDs[i]] = true; }
+    for(i = 0; i < optionCount; i++) {
+      if (!contains[i]) {
         // option i1 is not in the list of optionIDs, so it means user unvoted i1 (if voted)
         // remove this voter from option i1 voters if needed
-        camp.options[i1].voters = removeAnElementFromArrayIfNeeded(camp.options[i1].voters, msg.sender);
+        camp.options[i].voters = removeAnElementFromArrayIfNeeded(camp.options[i].voters, msg.sender);
       }
     }
     emit Voted(msg.sender, campaignID, optionIDs);
@@ -232,19 +232,18 @@ contract KyVote {
 
   // Return list of active campaign IDs
   function getListActiveCampaignIDs() public view returns (uint[]) {
-    uint i3;
-
     // Count number of active campaigns
     uint count = 0;
-    for (i3 = 0; i3 < numberCampaigns; i3++) {
-      if (campaigns[i3].end > now) { count++; }
+    uint i;
+    for (i = 0; i < numberCampaigns; i++) {
+      if (campaigns[i].end > now) { count++; }
     }
 
     // Add list of active campaigns to results list
     uint[] memory results = new uint[](count);
-    for (i3 = 0; i3 < numberCampaigns; i3++) {
-      if (campaigns[i3].end > now) {
-        results[--count] = i3;
+    for (i = 0; i < numberCampaigns; i++) {
+      if (campaigns[i].end > now) {
+        results[--count] = i;
       }
     }
     return results;
@@ -272,8 +271,8 @@ contract KyVote {
   // check if an address is whitelisted, allow all access
   function checkWhitelisted(uint campaignID, address _account) public view returns (bool) {
     require(campaignID < numberCampaigns);
-    for (uint ii = 0; ii < campaigns[campaignID].whitelistedAddresses.length; ii++) {
-      if (campaigns[campaignID].whitelistedAddresses[ii] == _account) { return true; }
+    for (uint i = 0; i < campaigns[campaignID].whitelistedAddresses.length; i++) {
+      if (campaigns[campaignID].whitelistedAddresses[i] == _account) { return true; }
     }
     return false;
   }
@@ -292,11 +291,11 @@ contract KyVote {
     uint[] memory ids = new uint[](count);
     bytes32[] memory names = new bytes32[](count);
     bytes32[] memory urls = new bytes32[](count);
-    for (uint i4 = 0; i4 < count; i4++) {
-      Option storage op4 = campaigns[campaignID].options[i4];
-      ids[i4] = op4.id;
-      names[i4] = op4.name;
-      urls[i4] = op4.url;
+    for (uint i = 0; i < count; i++) {
+      Option storage op4 = campaigns[campaignID].options[i];
+      ids[i] = op4.id;
+      names[i] = op4.name;
+      urls[i] = op4.url;
     }
     return (ids, names, urls);
   }
@@ -339,36 +338,36 @@ contract KyVote {
   // Remove an element from an array if needed
   function removeAnElementFromArrayIfNeeded(address[] memory array, address element) internal pure returns (address[]) {
     uint index = array.length;
-    uint i5;
+    uint i;
     // check if need to remove the element from array
-    for(i5 = 0; i5 < array.length; i5++) {
-      if (array[i5] == element) {
-        index = i5; break;
+    for(i = 0; i < array.length; i++) {
+      if (array[i] == element) {
+        index = i; break;
       }
     }
     if (index == array.length) { return array; } // voters does not contain id
     // element is in the array, need to remove it
     address[] memory newArray = new address[](array.length - 1);
     uint count = 0;
-    for (i5 = 0; i5 < array.length; i5++) {
-      if (i5 == index) { continue; }
-      newArray[count++] = array[i5];
+    for (i = 0; i < array.length; i++) {
+      if (i == index) { continue; }
+      newArray[count++] = array[i];
     }
     return newArray;
   }
 
   // Add new element to an array if it is not in the array yet
   function addNewElementToArrayIfNeeded(address[] memory array, address element) internal pure returns (address[]) {
-    uint i6;
-    for(i6 = 0; i6 < array.length; i6++) {
-      if (array[i6] == element) {
+    uint i;
+    for(i = 0; i < array.length; i++) {
+      if (array[i] == element) {
         return array; // already existed, no need to add
       }
     }
     // element is not in the array, append to end of list
     address[] memory newArray = new address[](array.length + 1);
-    for (i6 = 0; i6 < array.length; i6++) {
-      newArray[i6] = array[i6];
+    for (i = 0; i < array.length; i++) {
+      newArray[i] = array[i];
     }
     newArray[array.length] = element;
     return newArray;
