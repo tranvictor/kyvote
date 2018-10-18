@@ -1,6 +1,15 @@
 pragma solidity ^0.4.18;
 
-import "./ERC20Interface.sol";
+interface ERC20 {
+    function totalSupply() external view returns (uint supply);
+    function balanceOf(address _owner) external view returns (uint balance);
+    function transfer(address _to, uint _value) external returns (bool success);
+    function transferFrom(address _from, address _to, uint _value) external returns (bool success);
+    function approve(address _spender, uint _value) external returns (bool success);
+    function allowance(address _owner, address _spender) external view returns (uint remaining);
+    function decimals() external view returns(uint digits);
+    event Approval(address indexed _owner, address indexed _spender, uint _value);
+}
 
 contract KyVote {
 
@@ -73,7 +82,7 @@ contract KyVote {
     uint end;
     address admin;
     bool isMultipleChoices;
-    address[] whitelistedAddresses;
+    mapping (address => bool) whitelistedAddresses;
   }
 
   // Mapping from campaignID => campaign object, id of campaign is set from 0
@@ -108,73 +117,44 @@ contract KyVote {
       end: end,
       admin: msg.sender,
       isMultipleChoices: isMultipleChoices,
-      optionCount: optionNames.length,
-      whitelistedAddresses: whitelistedAddresses
+      optionCount: optionNames.length
     });
+    Campaign storage camp = campaigns[campaignID];
     // Adding list options to new campaign
     for(uint i = 0; i < optionNames.length; i++) {
-      // Option ID is started from 0, map option ID to new option
-      campaigns[campaignID].options[i] = Option({id: i, name: optionNames[i], url: optionURLs[i], voters: new address[](0)});
+        // Option ID is started from 0, map option ID to new option
+        camp.options[i] = Option({id: i, name: optionNames[i], url: optionURLs[i], voters: new address[](0)});
+    }
+    for(i = 0; i < whitelistedAddresses.length; i++) {
+        camp.whitelistedAddresses[whitelistedAddresses[i]] = true;
     }
     emit AddCampaign(campaignID);
     return campaignID;
   }
 
-  // Add more whitelisted addresses
-  function addWhitelistedAddresses(uint campaignID, address[] memory addresses) public payable {
-    require(campaignID < numberCampaigns, "Campaign does not exist");
-    Campaign storage camp = campaigns[campaignID];
-    require(camp.admin == msg.sender, "Only campaign admin can call this function");
-    // An easy way to test
-    address[] memory whitelisted = camp.whitelistedAddresses;
-    for (uint i = 0; i < addresses.length; i++) {
-      whitelisted = addNewElementToArrayIfNeeded(whitelisted, addresses[i]);
-    }
-    camp.whitelistedAddresses = whitelisted;
-  }
-
-  // Remove whitelisted addresses
+  // Update whitelisted addresses, add or remove whitelistedAddresses
   // Remove an address will also remove all of its voted options
-  function removeWhitelistedAddresses(uint campaignID, address[] memory addresses) public payable {
+  function updateWhitelistedAddresses(uint campaignID, address[] memory addresses, bool isAdding) public payable {
     require(campaignID < numberCampaigns, "Campaign does not exist");
     Campaign storage camp = campaigns[campaignID];
     require(camp.admin == msg.sender, "Only campaign admin can call this function");
-    // An easy way to test
-    address[] memory whitelisted = camp.whitelistedAddresses;
     for (uint i = 0; i < addresses.length; i++) {
-      whitelisted = removeAnElementFromArrayIfNeeded(whitelisted, addresses[i]);
-      // Remove this address out of voters for each option in this campaign if needed
-      for(uint j = 0; j < camp.optionCount; j++) {
-        Option storage op1 = camp.options[j];
-        op1.voters = removeAnElementFromArrayIfNeeded(op1.voters, addresses[i]);
-      }
-    }
-    camp.whitelistedAddresses = whitelisted;
-  }
-
-  // Override list of whitelisted addresses
-  function updateNewWhitelistedAddresses(uint campaignID, address[] memory addresses) public payable {
-    require(campaignID < numberCampaigns, "Campaign does not exist");
-    Campaign storage camp = campaigns[campaignID];
-    require(camp.admin == msg.sender, "Only campaign admin can call this function");
-    for (uint i = 0; i < camp.whitelistedAddresses.length; i++) {
-      bool _contain = false;
-      address addr = camp.whitelistedAddresses[i];
-      for(uint j = 0; j < addresses.length; j++) {
-        if (addresses[j] == addr) {
-          _contain = true; break;
+        camp.whitelistedAddresses[addresses[i]] = isAdding;
+        if (!isAdding) {
+            for(uint j = 0; j < camp.optionCount; j++) {
+                Option storage op = camp.options[j];
+                uint index = getIndexOfElementInArray(op.voters, addresses[i]);
+                if (index < op.voters.length) {
+                    // Delete element at index
+                    address temp = op.voters[index];
+                    op.voters[index] = op.voters[op.voters.length - 1];
+                    op.voters[op.voters.length - 1] = temp;
+                    delete op.voters[op.voters.length - 1];
+                    op.voters.length--;
+                }
+            }
         }
-      }
-      if (!_contain) {
-        // new whitelisted addresses does not contain the address camp.whitelistedAddresses[ii1]
-        // Check each option in campaign, if this address has voted for the option, then unvote it
-        for(j = 0; j < camp.optionCount; j++) {
-          Option storage op1 = camp.options[j];
-          op1.voters = removeAnElementFromArrayIfNeeded(op1.voters, addr);
-        }
-      }
     }
-    campaigns[campaignID].whitelistedAddresses = addresses;
   }
 
   // Stop a campaign
@@ -190,24 +170,11 @@ contract KyVote {
     require(campaignID < numberCampaigns, "Campaign not found");
     Campaign storage camp = campaigns[campaignID];
     require(camp.end > now, "Campaign should be running");
-    if (!camp.isMultipleChoices) {
-      require(optionIDs.length <= 1, "Can not vote multi options for none multi choices campaign"); // not multiple choices, then can not vote for more than 1 option
+    require(camp.whitelistedAddresses[msg.sender] == true, "Only whitelisted account can vote");
+    if (optionIDs.length > 1) {
+      require(camp.isMultipleChoices, "Can not vote multi options for none multi choices campaign"); // not multiple choices, then can not vote for more than 1 option
     }
     uint i;
-    bool whitelisted = false;
-    for (i = 0; i < camp.whitelistedAddresses.length; i++) {
-      if (camp.whitelistedAddresses[i] == msg.sender) {
-        whitelisted = true; break;
-      }
-    }
-    require(whitelisted == true, "Only whitelisted account can vote");
-    // Adding the voter ID to list of voters for each voted option
-    for (i = 0; i < optionIDs.length; i++) {
-      require(optionIDs[i] < camp.optionCount, "Voted options should be in the list of options");
-      Option storage op1 = camp.options[optionIDs[i]];
-      // add voter to voters list if needed
-      op1.voters = addNewElementToArrayIfNeeded(op1.voters, msg.sender);
-    }
     // use contains to check if an option is in the list new voted options
     bool[] memory contains = new bool[](camp.optionCount);
     uint optionCount = camp.optionCount;
@@ -217,7 +184,21 @@ contract KyVote {
       if (!contains[i]) {
         // option i1 is not in the list of optionIDs, so it means user unvoted i1 (if voted)
         // remove this voter from option i1 voters if needed
-        camp.options[i].voters = removeAnElementFromArrayIfNeeded(camp.options[i].voters, msg.sender);
+        Option storage op = camp.options[i];
+        uint index = getIndexOfElementInArray(op.voters, msg.sender);
+        if (index < camp.options[i].voters.length) {
+            // // Delete element at index
+            address temp = op.voters[index];
+            op.voters[index] = op.voters[op.voters.length - 1];
+            op.voters[op.voters.length - 1] = temp;
+            delete op.voters[op.voters.length - 1];
+            op.voters.length--;
+        }
+      } else {
+        if (getIndexOfElementInArray(camp.options[i].voters, msg.sender) == camp.options[i].voters.length) {
+            // msg.sender is not in the voters of option i, push into voters list
+            camp.options[i].voters.push(msg.sender);
+        }
       }
     }
     emit Voted(msg.sender, campaignID, optionIDs);
@@ -261,19 +242,10 @@ contract KyVote {
     );
   }
 
-  // get whitelisted addresses
-  function getCampaignWhitelistedAddresses(uint campaignID) public view returns (address[]) {
-    require(campaignID < numberCampaigns);
-    return campaigns[campaignID].whitelistedAddresses;
-  }
-
   // check if an address is whitelisted, allow all access
   function checkWhitelisted(uint campaignID, address _account) public view returns (bool) {
     require(campaignID < numberCampaigns);
-    for (uint i = 0; i < campaigns[campaignID].whitelistedAddresses.length; i++) {
-      if (campaigns[campaignID].whitelistedAddresses[i] == _account) { return true; }
-    }
-    return false;
+    return campaigns[campaignID].whitelistedAddresses[_account] == true;
   }
 
   // get options count for a given campaignID
@@ -301,7 +273,7 @@ contract KyVote {
 
   // get fully details of an option given its ID and campaignID, (id, name, url, voters)
   function getOption(uint campaignID, uint optionID) public view returns (uint, bytes32, bytes32, address[]) {
-    require(campaignID < numberCampaigns && optionID >= 0);
+    require(campaignID < numberCampaigns);
     require(optionID < campaigns[campaignID].optionCount);
     return (
       optionID,
@@ -315,60 +287,30 @@ contract KyVote {
   // mostly option data is not changed, but list voters is changing over time
   // getting fully details is redundant, (voters)
   function getVoters(uint campaignID, uint optionID) public view returns (address[]) {
-    require(campaignID < numberCampaigns && optionID >= 0);
+    require(campaignID < numberCampaigns);
     require(optionID < campaigns[campaignID].optionCount);
     return campaigns[campaignID].options[optionID].voters;
   }
 
-  // optional function to update end time (earlier or later)
-  // function updateEndTime(uint campaignID, uint end) public {
-  //   require(campaignID < numberCampaigns);
-  //   require(end > now); // new end time should be greater than current time block
-  //   require(campaigns[campaignID].admin == msg.sender); // only admin can update info of a campaign
-  //   campaigns[campaignID].end = end;
-  //   emit UpdateCampaign(campaignID);
-  // }
+//   // optional function to update end time (earlier or later)
+//   function updateEndTime(uint campaignID, uint end) public {
+//      require(campaignID < numberCampaigns);
+//      require(end > now); // new end time should be greater than current time block
+//      require(campaigns[campaignID].admin == msg.sender); // only admin can update info of a campaign
+//      campaigns[campaignID].end = end;
+//      emit UpdateCampaign(campaignID);
+//   }
 
   // return total number of all campaigns
   function getTotalNumberCampaigns() public view returns (uint) {
     return numberCampaigns;
   }
 
-  // Remove an element from an array if needed
-  function removeAnElementFromArrayIfNeeded(address[] memory array, address element) internal pure returns (address[]) {
-    uint index = array.length;
-    uint i;
-    // check if need to remove the element from array
-    for(i = 0; i < array.length; i++) {
-      if (array[i] == element) {
-        index = i; break;
-      }
+  // Getting index of an element in the array, return length of array if element is not in the array
+  function getIndexOfElementInArray(address[] memory array, address element) internal pure returns (uint) {
+    for(uint i = 0; i < array.length; i++) {
+      if (array[i] == element) { return i; }
     }
-    if (index == array.length) { return array; } // voters does not contain id
-    // element is in the array, need to remove it
-    address[] memory newArray = new address[](array.length - 1);
-    uint count = 0;
-    for (i = 0; i < array.length; i++) {
-      if (i == index) { continue; }
-      newArray[count++] = array[i];
-    }
-    return newArray;
-  }
-
-  // Add new element to an array if it is not in the array yet
-  function addNewElementToArrayIfNeeded(address[] memory array, address element) internal pure returns (address[]) {
-    uint i;
-    for(i = 0; i < array.length; i++) {
-      if (array[i] == element) {
-        return array; // already existed, no need to add
-      }
-    }
-    // element is not in the array, append to end of list
-    address[] memory newArray = new address[](array.length + 1);
-    for (i = 0; i < array.length; i++) {
-      newArray[i] = array[i];
-    }
-    newArray[array.length] = element;
-    return newArray;
+    return array.length;
   }
 }

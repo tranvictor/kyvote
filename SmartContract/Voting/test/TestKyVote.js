@@ -32,10 +32,9 @@ contract('KyVote', function(accounts) {
       return kyVote.isCampaignEnded(campaignID);
     }).then(function(isEnded) {
       assert.equal(isEnded, false, "The new campaign should not be ended");
-      return kyVote.getCampaignWhitelistedAddresses(campaignID);
-    }).then(function(addresses) {
-      assert.equal(addresses.length, 1, "Should contain only 1 whitelisted address");
-      assert.equal(addresses[0], accounts[0], "Whitelisted address should be account 0");
+      return kyVote.checkWhitelisted(campaignID, accounts[0]);
+    }).then(function(isWhitelisted) {
+      assert.equal(isWhitelisted, true, "Account 0 should be in the whitelisted addresses");
       return kyVote.getListActiveCampaignIDs();
     }).then(function(activeIDs) {
       assert.equal(activeIDs.length, 1, "Should have only 1 active campaigns");
@@ -109,7 +108,7 @@ contract('KyVote', function(accounts) {
       assert.equal(voters1.length, 0, "Should have no voters for option 1");
     });
   });
-  it("Test override list whitelisted addresses", function() {
+  it("Test add new whitelisted addresses", function() {
     var kyVote;
     var campaginID;
     return KyVote.deployed().then(function(instance) {
@@ -124,42 +123,11 @@ contract('KyVote', function(accounts) {
       return kyVote.checkWhitelisted(campaignID, accounts[0]);
     }).then(function(whitelisted) {
       assert.equal(whitelisted, true, "The account 0 should be in the whitelisted addresses");
-      kyVote.updateNewWhitelistedAddresses(campaignID, []);
-      return kyVote.checkWhitelisted(campaignID, accounts[0]);
+      kyVote.updateWhitelistedAddresses(campaignID, [0x2262d4f6312805851e3b27c40db2c7282e6e4a49], true);
+      return kyVote.checkWhitelisted(campaignID, 0x2262d4f6312805851e3b27c40db2c7282e6e4a49);
     }).then(function(whitelisted) {
       //console.log("Override whitelisted addresses with empty data");
-      assert.equal(whitelisted, false, "The account 0 should not be in the whitelisted addresses");
-      kyVote.updateNewWhitelistedAddresses(campaignID, [0x2262d4f6312805851e3b27c40db2c7282e6e4a49]);
-      //console.log("Add new whitelisted addresses: [0x2262d4f6312805851e3b27c40db2c7282e6e4a49]");
-      return kyVote.getCampaignWhitelistedAddresses(campaignID);
-    }).then(function(addrsses) {
-      assert.equal(addrsses.length, 1, "Whitelisted addresses should have 1 element");
-      assert.equal(addrsses[0], 0x2262d4f6312805851e3b27c40db2c7282e6e4a49, "0x2262d4f6312805851e3b27c40db2c7282e6e4a49 should be in the whitelisted addresses")
-    });
-  });
-  it("Test override list whitelisted addresses should update votes for all options", function() {
-    var kyVote;
-    var campaginID;
-    return KyVote.deployed().then(function(instance) {
-      kyVote = instance;
-      return kyVote.createCampaign("New campaign", ["option 1", "option 2"], ["url 1", "url 2"], 999999999999, true, [accounts[0], 0x2262d4f6312805851e3b27c40db2c7282e6e4a49]);
-    }).then(function(transaction) {
-      numberCampaigns++;
-      //console.log(transaction.logs[0].args);
-      campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
-      //console.log("Created new campaign with ID: " + campaignID);
-      assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
-      return kyVote.checkWhitelisted(campaignID, accounts[0]);
-    }).then(function(whitelisted) {
-      assert.equal(whitelisted, true, "The account 0 should be in the whitelisted addresses");
-      kyVote.vote(campaignID, [0], {from: accounts[0]});
-      return kyVote.getVoters(campaignID, 0);
-    }).then(function(voters0) {
-      assert.equal(voters0[0], accounts[0], "The account 0 should be in the list voters of option 0");
-      kyVote.updateNewWhitelistedAddresses(campaignID, [0x2262d4f6312805851e3b27c40db2c7282e6e4a49]);
-      return kyVote.getVoters(campaignID, 0);
-    }).then(function(voters0) {
-      assert.equal(voters0.length, 0, "The account 0 should be removed from list voters of option 0 when override new list of whitelisted addresses")
+      assert.equal(whitelisted, true, "0x2262d4f6312805851e3b27c40db2c7282e6e4a49 should be added into the whitelisted addresses");
     });
   });
   it("Test remove whitelisted addresses", function() {
@@ -177,19 +145,16 @@ contract('KyVote', function(accounts) {
       return kyVote.checkWhitelisted(campaignID, accounts[0]);
     }).then(function(whitelisted) {
       assert.equal(whitelisted, true, "The account 0 should be in the whitelisted addresses");
-      kyVote.removeWhitelistedAddresses(campaignID, [0x2262d4f6312805851e3b27c40db2c7282e6e4a49]);
+      kyVote.updateWhitelistedAddresses(campaignID, [0x2262d4f6312805851e3b27c40db2c7282e6e4a49], false);
       // remove non whitelisted address
       return kyVote.checkWhitelisted(campaignID, accounts[0]);
     }).then(function(whitelisted) {
       assert.equal(whitelisted, true, "The account 0 should be in the whitelisted addresses");
-      kyVote.removeWhitelistedAddresses(campaignID, [accounts[0]]);
+      kyVote.updateWhitelistedAddresses(campaignID, [accounts[0]], false);
       return kyVote.checkWhitelisted(campaignID, accounts[0]);
     }).then(function(whitelisted) {
       //console.log("Removed account 0 from whitelisted addresses");
       assert.equal(whitelisted, false, "The account 0 should not be in the whitelisted addresses");
-      return kyVote.getCampaignWhitelistedAddresses(campaignID);
-    }).then(function(addresses) {
-      assert.equal(addresses.length, 0, "Whitelisted address should be empty");
     });
   });
   it("Test remove whitelisted address that was used to vote", function() {
@@ -210,7 +175,7 @@ contract('KyVote', function(accounts) {
     }).then(function(voters0) {
       assert.equal(voters0.length, 1, "Should have 1 voter for option 0");
       assert.equal(voters0[0], accounts[0], "Voter of option 0 should be account 0");
-      kyVote.removeWhitelistedAddresses(campaignID, [accounts[0]]);
+      kyVote.updateWhitelistedAddresses(campaignID, [accounts[0]], false);
       //console.log("Removed account 0 from whitelisted address");
       return kyVote.getVoters(campaignID, 0);
     }).then(function(voters0) {
@@ -235,16 +200,11 @@ contract('KyVote', function(accounts) {
       return kyVote.checkWhitelisted(campaignID, 0x2262d4f6312805851e3b27c40db2c7282e6e4a49);
     }).then(function(whitelisted) {
       assert.equal(whitelisted, false, "0x2262d4f6312805851e3b27c40db2c7282e6e4a49 should be in the whitelisted addresses");
-      kyVote.addWhitelistedAddresses(campaignID, [0x2262d4f6312805851e3b27c40db2c7282e6e4a49]);
+      kyVote.updateWhitelistedAddresses(campaignID, [0x2262d4f6312805851e3b27c40db2c7282e6e4a49], true);
       //console.log("Added 0x2262d4f6312805851e3b27c40db2c7282e6e4a49 to whitelisted addresses");
       return kyVote.checkWhitelisted(campaignID, 0x2262d4f6312805851e3b27c40db2c7282e6e4a49);
     }).then(function(whitelisted) {
       assert.equal(whitelisted, true, "0x2262d4f6312805851e3b27c40db2c7282e6e4a49 should be in the whitelisted addresses");
-      return kyVote.getCampaignWhitelistedAddresses(campaignID);
-    }).then(function(addresses) {
-      assert.equal(addresses.length, 2, "Whitelisted addresses should have 2 elements")
-      assert.equal(addresses[0], accounts[0], "Accounts[0] should be in the whitelisted addresses");
-      assert.equal(addresses[1], 0x2262d4f6312805851e3b27c40db2c7282e6e4a49, "0x2262d4f6312805851e3b27c40db2c7282e6e4a49 should be in the whitelisted addresses");
     });
   });
   it("Test whitelisted account should be able to vote and unvote for all options", function() {
