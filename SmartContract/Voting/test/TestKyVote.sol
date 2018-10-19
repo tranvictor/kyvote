@@ -31,8 +31,7 @@ contract TestKyVote {
     Assert.equal(kyVote.checkWhitelisted(numberCampaigns, 0x2262D4F6312805851E3B27C40db2c7282E6e4a49), true, "Address should be whitelisted");
     Assert.equal(kyVote.checkWhitelisted(numberCampaigns, 0x2262d4f6312805851E3b27C40Db2C7282E6E4A48), false, "Address should not be whitelisted");
     // Test campaign details
-    (uint cID, bytes32 cName, uint cEndTime, address cAdmin, bool cMultipleChoice) = kyVote.getCampaignDetails(numberCampaigns);
-    Assert.equal(numberCampaigns, cID, "Wrongly getting campaign");
+    (bytes32 cName, uint cEndTime, address cAdmin, bool cMultipleChoice) = kyVote.getCampaignDetails(numberCampaigns);
     Assert.equal(cName, bytes32("New campaign"), "Name of campaign is not equal");
     Assert.equal(cEndTime, 999999999999, "End time of campaign is not equal");
     Assert.equal(cMultipleChoice, true, "Campaign should be a multiple choice");
@@ -76,23 +75,15 @@ contract TestKyVote {
   //   testCreateNewCampaign();
   //   uint numberCampaigns = kyVote.getTotalNumberCampaigns();
   //   // id of new campaign: numberCampaigns - 1;
-  //   address[] memory oldVoters0 = kyVote.getVoters(numberCampaigns - 1, 0);
-  //   address[] memory oldVoters1 = kyVote.getVoters(numberCampaigns - 1, 1);
+  //   address[] memory oldVoters0 = kyVote.getVoters((numberCampaigns - 1) << 128 | 0);
+  //   address[] memory oldVoters1 = kyVote.getVoters((numberCampaigns - 1) << 128 | 1);
   //   uint[] memory voteOptions = new uint[](1);
   //   voteOptions[0] = 0;
   //   kyVote.vote(numberCampaigns - 1, voteOptions);
-  //   address[] memory newVoters0 = kyVote.getVoters(numberCampaigns - 1, 0);
-  //   address[] memory newVoters1 = kyVote.getVoters(numberCampaigns - 1, 1);
+  //   address[] memory newVoters0 = kyVote.getVoters((numberCampaigns - 1) << 128 | 0);
+  //   address[] memory newVoters1 = kyVote.getVoters((numberCampaigns - 1) << 128 | 1);
   //   Assert.equal(oldVoters0.length + 1, newVoters0.length, "New voter should be added to option 0");
   //   Assert.equal(oldVoters1.length, newVoters1.length, "New voter should not be added to option 1");
-  //   uint i;
-  //   bool contains = false;
-  //   Assert.equal(contains, true, "Voters of option 0 should contain new address");
-  //   contains = false;
-  //   for(i = 0; i < newVoters1.length; i++) {
-  //     if (newVoters1[i] == kyVote.owner()) { contains = true; break; }
-  //   }
-  //   Assert.equal(contains, false, "Voters of option 1 should not contain new address");
   // }
 
   // Test create a multiple choice campaign with 2 options and vote all options

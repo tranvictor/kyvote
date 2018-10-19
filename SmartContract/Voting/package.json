@@ -43,7 +43,7 @@
     "webpack-dev-server": "^3.1.4"
   },
   "dependencies": {
-    "bignumber.js": "^7.2.1",
+    "bignum": "^0.13.0",
     "truffle-hdwallet-provider": "0.0.6"
   }
 }

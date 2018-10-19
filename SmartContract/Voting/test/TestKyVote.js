@@ -1,6 +1,10 @@
 const KyVote = artifacts.require("KyVote");
-const BigNumber = require('bignumber.js');
+const bignum = require('bignum');
 const Web3 = require('web3');
+
+function mergeCampaignAndOptionIDs(campaignID, optionID) {
+  return bignum(campaignID).shiftLeft(128).or(optionID).toString();
+}
 
 contract('KyVote', function(accounts) {
   if (typeof web3 !== 'undefined') {
@@ -18,17 +22,17 @@ contract('KyVote', function(accounts) {
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
-      campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
+      campaignID = parseInt(bignum(transaction.logs[0].args.campaignID));
       //console.log("Created new campaign with ID: "+ campaignID);
       assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
       return kyVote.getCampaignDetails(campaignID);
     }).then(function(details) {
-      assert.equal(details[2], 999999999999, "Ending time should be set to default value");
-      assert.equal(details[3], accounts[0], "Admin should be the sender of create campaign");
-      assert.equal(details[4], true, "The campaign should allow multiple choices");
-      return kyVote.getOptionsCount(parseInt(BigNumber(details[0])));
+      assert.equal(details[1], 999999999999, "Ending time should be set to default value");
+      assert.equal(details[2], accounts[0], "Admin should be the sender of create campaign");
+      assert.equal(details[3], true, "The campaign should allow multiple choices");
+      return kyVote.getOptionsCount(campaignID);
     }).then(function(data) {
-      assert.equal(parseInt(BigNumber(data)), 2, "The number of options should be 2");
+      assert.equal(parseInt(bignum(data)), 2, "The number of options should be 2");
       return kyVote.isCampaignEnded(campaignID);
     }).then(function(isEnded) {
       assert.equal(isEnded, false, "The new campaign should not be ended");
@@ -50,7 +54,7 @@ contract('KyVote', function(accounts) {
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
-      campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
+      campaignID = parseInt(bignum(transaction.logs[0].args.campaignID));
       //console.log("Created new campaign with ID: " + campaignID);
       assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
       return kyVote.isCampaignEnded(campaignID);
@@ -73,7 +77,7 @@ contract('KyVote', function(accounts) {
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
-      campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
+      campaignID = parseInt(bignum(transaction.logs[0].args.campaignID));
       assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
       //console.log("Created new campaign with ID: "+ campaignID);
       return kyVote.getListOptions(campaignID);
@@ -83,27 +87,25 @@ contract('KyVote', function(accounts) {
       assert.equal(details[0].length, 2, "Should have 2 options");
       assert.equal(details[1].length, 2, "Should have 2 options");
       assert.equal(details[2].length, 2, "Should have 2 options");
-      let id0 = parseInt(BigNumber(details[0][0]));
-      let id1 = parseInt(BigNumber(details[0][1]));
+      let id0 = parseInt(bignum(details[0][0]));
+      let id1 = parseInt(bignum(details[0][1]));
       assert.equal(id0, 0, "First option should have id 0");
       assert.equal(id1, 1, "Second option should have id 1");
-      return kyVote.getOption(campaignID, 0);
+      return kyVote.getOption(mergeCampaignAndOptionIDs(campaignID, 0));
     }).then(function(option0Details) {
-      assert.equal(option0Details.length, 4, "Should return 4 data for option 0");
-      assert.equal(0, parseInt(BigNumber(option0Details[0])), "First element should be id with value 0");
-      assert.equal(option0Details[3].length, 0, "Should have no voters for option 0");
-      return kyVote.getOption(campaignID, 1);
+      assert.equal(option0Details.length, 3, "Should return 3 data for option 0");
+      assert.equal(option0Details[2].length, 0, "Should have no voters for option 0");
+      return kyVote.getOption(mergeCampaignAndOptionIDs(campaignID, 1));
     }).then(function(option1Details) {
-      assert.equal(option1Details.length, 4, "Should return 4 data for option 1");
-      assert.equal(1, parseInt(BigNumber(option1Details[0])), "First element should be id with value 1");
-      assert.equal(option1Details[3].length, 0, "Should have no voters for option 1");
+      assert.equal(option1Details.length, 3, "Should return 3 data for option 1");
+      assert.equal(option1Details[2].length, 0, "Should have no voters for option 1");
       return kyVote.checkWhitelisted(campaignID, accounts[0]);
     }).then(function(isWhitelisted) {
       assert.equal(isWhitelisted, true, "Account 0 should be whitelisted for this campaign");
-      return kyVote.getVoters(campaignID, 0);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 0));
     }).then(function(voters0) {
       assert.equal(voters0.length, 0, "Should have no voters for option 0");
-      return kyVote.getVoters(campaignID, 1);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 1));
     }).then(function(voters1) {
       assert.equal(voters1.length, 0, "Should have no voters for option 1");
     });
@@ -117,7 +119,7 @@ contract('KyVote', function(accounts) {
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
-      campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
+      campaignID = parseInt(bignum(transaction.logs[0].args.campaignID));
       //console.log("Created new campaign with ID: " + campaignID);
       assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
       return kyVote.checkWhitelisted(campaignID, accounts[0]);
@@ -139,7 +141,7 @@ contract('KyVote', function(accounts) {
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
-      campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
+      campaignID = parseInt(bignum(transaction.logs[0].args.campaignID));
       //console.log("Created new campaign with ID: " + campaignID);
       assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
       return kyVote.checkWhitelisted(campaignID, accounts[0]);
@@ -166,18 +168,18 @@ contract('KyVote', function(accounts) {
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
-      campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
+      campaignID = parseInt(bignum(transaction.logs[0].args.campaignID));
       //console.log("Created new campaign with ID: "+ campaignID);
       assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
       //console.log("Voting option 0");
       kyVote.vote(campaignID, [0], {from: accounts[0]});
-      return kyVote.getVoters(campaignID, 0);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 0));
     }).then(function(voters0) {
       assert.equal(voters0.length, 1, "Should have 1 voter for option 0");
       assert.equal(voters0[0], accounts[0], "Voter of option 0 should be account 0");
       kyVote.updateWhitelistedAddresses(campaignID, [accounts[0]], false);
       //console.log("Removed account 0 from whitelisted address");
-      return kyVote.getVoters(campaignID, 0);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 0));
     }).then(function(voters0) {
       assert.equal(voters0.length, 0, "Account 0 should be removed from option 0 voters as it is not a whitelisted address anymore");
     });
@@ -191,7 +193,7 @@ contract('KyVote', function(accounts) {
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
-      campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
+      campaignID = parseInt(bignum(transaction.logs[0].args.campaignID));
       //console.log("Created new campaign with ID: " + campaignID);
       assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
       return kyVote.checkWhitelisted(campaignID, accounts[0]);
@@ -216,44 +218,44 @@ contract('KyVote', function(accounts) {
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
-      campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
+      campaignID = parseInt(bignum(transaction.logs[0].args.campaignID));
       //console.log("Created new campaign with ID: "+ campaignID);
       assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
       //console.log("Voting option 0");
       kyVote.vote(campaignID, [0], {from: accounts[0]});
-      return kyVote.getVoters(campaignID, 0);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 0));
     }).then(function(voters0) {
       //console.log("Voted option 0");
       assert.equal(voters0.length, 1, "Should have 1 voter for option 0");
       assert.equal(voters0[0], accounts[0], "Voter of option 0 should be account 0");
       //console.log("Unvoting option 0");
       kyVote.vote(campaignID, [], {from: accounts[0]});
-      return kyVote.getVoters(campaignID, 0);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 0));
     }).then(function(voters0) {
       //console.log("Unvoted option 0");
       assert.equal(voters0.length, 0, "Should have no voter for option 0");
-      return kyVote.getVoters(campaignID, 1);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 1));
     }).then(function(voters1) {
       assert.equal(voters1.length, 0, "Should have 0 voters for option 1");
       //console.log("Voting option 1");
       kyVote.vote(campaignID, [1], {from: accounts[0]});
-      return kyVote.getVoters(campaignID, 1);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 1));
     }).then(function(voters1) {
       //console.log("Voted option 1");
       assert.equal(voters1.length, 1, "Should have 1 voter for option 1");
       //console.log("Unvoting option 1");
       kyVote.vote(campaignID, [], {from: accounts[0]});
-      return kyVote.getVoters(campaignID, 1);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 1));
     }).then(function(voters1) {
       //console.log("Unvoted option 1");
       assert.equal(voters1.length, 0, "Should have 0 voters for option 1");
       //console.log("Voting multiple options");
       kyVote.vote(campaignID, [0, 1], {from: accounts[0]});
-      return kyVote.getVoters(campaignID, 0);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 0));
     }).then(function(voters0) {
       //console.log("Voted option 0");
       assert.equal(voters0.length, 1, "Should have 1 voter for option 0");
-      return kyVote.getVoters(campaignID, 1);
+      return kyVote.getVoters(mergeCampaignAndOptionIDs(campaignID, 1));
     }).then(function(voters1) {
       //console.log("Voted option 1");
       assert.equal(voters1.length, 1, "Should have 1 voter for option 1");
