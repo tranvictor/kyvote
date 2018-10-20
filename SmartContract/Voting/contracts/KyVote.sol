@@ -13,7 +13,7 @@ interface ERC20 {
 
 contract KyVote {
 
-  constructor() public payable { owner = msg.sender; }
+  constructor() public { owner = msg.sender; }
   address public owner;
 
   event WithdrawETH(uint amount);
@@ -26,7 +26,7 @@ contract KyVote {
 
   // Withdraw ETH from contract to owner account
   function withdrawETH(uint amount) public onlyOwner returns (bool) {
-    require(amount <= owner.balance, "Can not withdraw more than balance");
+    require(amount <= address(this).balance, "Can not withdraw more than balance");
     owner.transfer(amount);
     emit WithdrawETH(amount);
     return true;
@@ -34,7 +34,8 @@ contract KyVote {
 
   // Withdraw ERC token from contract to owner account
   function withdrawToken(ERC20 token, uint amount) public onlyOwner returns (bool) {
-    require(token.transfer(msg.sender, amount));
+    require(amount <= token.balanceOf(address(this)));
+    token.transfer(msg.sender, amount);
     emit WithdrawToken(token, amount);
     return true;
   }
