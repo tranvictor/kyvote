@@ -22,7 +22,7 @@ contract TestKyVote {
     whitelistedAddresses[0] = 0x2262D4F6312805851E3B27C40db2c7282E6e4a49;
     whitelistedAddresses[1] = kyVote.owner();
     // endTime is set to be very large: 999999999999
-    kyVote.createCampaign(bytes32("New campaign"), names, names, 999999999999, true, whitelistedAddresses);
+    kyVote.createCampaign(bytes32("New campaign"), names, names, (999999999999 << 4) | 1, whitelistedAddresses);
 
     Assert.equal(kyVote.isCampaignEnded(numberCampaigns), false, "Campaign should be active");
     // Test number of options
