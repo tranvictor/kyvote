@@ -29,9 +29,9 @@ contract KyVote {
   // Withdraw ERC token from contract to owner account
   function withdrawToken(Token token, uint amount) public onlyOwner returns (bool) {
     require(amount <= token.balanceOf(address(this)));
-    token.transfer(msg.sender, amount);
+    bool result = token.transfer(msg.sender, amount);
     emit WithdrawToken(token, amount);
-    return true;
+    return result;
   }
 
   // Get contract ETH balance
