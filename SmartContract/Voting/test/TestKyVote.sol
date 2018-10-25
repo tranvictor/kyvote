@@ -14,15 +14,20 @@ contract TestKyVote {
     // get current number of campaigns to check if number of campaigns increased after created new one
     uint numberCampaigns = kyVote.getTotalNumberCampaigns();
     // Set up some data for the campaigns with list of option names, urls
-    bytes32[] memory names = new bytes32[](2);
-    names[0] = bytes32("option 1");
-    names[1] = bytes32("option 2");
+    bytes32[] memory names = new bytes32[](4);
+    names[0] = bytes32("option1");
+    names[1] = bytes32("\n");
+    names[2] = bytes32("option2");
+    names[3] = bytes32("\n");
     // whitelisted addresses
     address[] memory whitelistedAddresses = new address[](2);
     whitelistedAddresses[0] = 0x2262D4F6312805851E3B27C40db2c7282E6e4a49;
     whitelistedAddresses[1] = kyVote.owner();
+    bytes32[] memory title = new bytes32[](2);
+    title[0] = bytes32("New");
+    title[1] = bytes32("campaign");
     // endTime is set to be very large: 999999999999
-    kyVote.createCampaign(bytes32("New campaign"), names, names, 999999999999, true, whitelistedAddresses);
+    kyVote.createCampaign(title, names, names, 999999999999, true, whitelistedAddresses);
 
     Assert.equal(kyVote.isCampaignEnded(numberCampaigns), false, "Campaign should be active");
     // Test number of options
@@ -31,9 +36,10 @@ contract TestKyVote {
     Assert.equal(kyVote.checkWhitelisted(numberCampaigns, 0x2262D4F6312805851E3B27C40db2c7282E6e4a49), true, "Address should be whitelisted");
     Assert.equal(kyVote.checkWhitelisted(numberCampaigns, 0x2262d4f6312805851E3b27C40Db2C7282E6E4A48), false, "Address should not be whitelisted");
     // Test campaign details
-    (uint cID, bytes32 cName, uint cEndTime, address cAdmin, bool cMultipleChoice) = kyVote.getCampaignDetails(numberCampaigns);
+    (uint cID, bytes32[] memory cName, uint cEndTime, address cAdmin, bool cMultipleChoice) = kyVote.getCampaignDetails(numberCampaigns);
     Assert.equal(numberCampaigns, cID, "Wrongly getting campaign");
-    Assert.equal(cName, bytes32("New campaign"), "Name of campaign is not equal");
+    Assert.equal(cName[0], title[0], "Name of campaign is not equal");
+    Assert.equal(cName[1], title[1], "Name of campaign is not equal");
     Assert.equal(cEndTime, 999999999999, "End time of campaign is not equal");
     Assert.equal(cMultipleChoice, true, "Campaign should be a multiple choice");
     Assert.equal(kyVote.getTotalNumberCampaigns(), numberCampaigns + 1, "Number campaign should be increased by one after created a new campaign");
@@ -60,14 +66,18 @@ contract TestKyVote {
     testCreateNewCampaign();
     (uint[] memory ids, bytes32[] memory names, bytes32[] memory urls) = kyVote.getListOptions(kyVote.getTotalNumberCampaigns() - 1);
     Assert.equal(ids.length, 2, "Should have exactly 2 options");
-    Assert.equal(names.length, 2, "Should have exactly 2 options");
-    Assert.equal(urls.length, 2, "Should have exactly 2 options");
+    Assert.equal(names.length, 4, "Should have 4 elements in option names");
+    Assert.equal(urls.length, 4, "Should have 4 elements in option urls");
     Assert.equal(ids[0], 0, "First option should have id 0");
     Assert.equal(ids[1], 1, "Second option should have id 1");
-    Assert.equal(names[0], bytes32("option 1"), "First option name should be option 1");
-    Assert.equal(names[1], bytes32("option 2"), "Second option name should be option 2");
-    Assert.equal(urls[0], bytes32("option 1"), "First option url should be option 1");
-    Assert.equal(urls[1], bytes32("option 2"), "Second option url should be option 2");
+    Assert.equal(names[0], bytes32("option1"), "First option name should be option 1");
+    Assert.equal(names[1], bytes32("\n"), "Should have separator at end of option 1 url");
+    Assert.equal(names[2], bytes32("option2"), "Second option name should be option 2");
+    Assert.equal(names[3], bytes32("\n"), "Should have separator at end of option 2 url");
+    Assert.equal(urls[0], bytes32("option1"), "First option url should be option 1");
+    Assert.equal(urls[1], bytes32("\n"), "Should have separator at end of option 1 url");
+    Assert.equal(urls[2], bytes32("option2"), "Second option url should be option 2");
+    Assert.equal(urls[3], bytes32("\n"), "Should have separator at end of option 2 url");
   }
 
   // Test create a campaign with 2 options and only vote option 0

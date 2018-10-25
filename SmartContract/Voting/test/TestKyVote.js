@@ -14,15 +14,20 @@ contract('KyVote', function(accounts) {
     var campaignID;
     return KyVote.deployed().then(function(instance) {
       kyVote = instance;
-      return kyVote.createCampaign("New campaign", ["option 1", "option 2"], ["url 1", "url 2"], 999999999999, true, [accounts[0]]);
+      var optionNames = [web3.fromAscii("option1"), web3.fromAscii("\n"), web3.fromAscii("option2"), web3.fromAscii("\n")];
+      console.log(web3.fromAscii("New") + " " + web3.fromAscii("Campaign"));
+      console.log(web3.fromAscii("option1") + " " + web3.fromAscii("\n"));
+      console.log(web3.fromAscii("url1") + " " + web3.fromAscii("\n"));
+      var optionURLs = [web3.fromAscii("url1"), web3.fromAscii("\n"), web3.fromAscii("url2"), web3.fromAscii("\n")];
+      return kyVote.createCampaign([web3.fromAscii("New"), web3.fromAscii("campaign")], optionNames, optionURLs, 999999999999, true, [accounts[0]]);
     }).then(function(transaction) {
       numberCampaigns++;
-      //console.log(transaction.logs[0].args);
       campaignID = parseInt(BigNumber(transaction.logs[0].args.campaignID));
       //console.log("Created new campaign with ID: "+ campaignID);
       assert.equal(campaignID, numberCampaigns - 1, "Invalid campaign ID");
       return kyVote.getCampaignDetails(campaignID);
     }).then(function(details) {
+      assert.equal(details[1].length, 2, "Title should have 2 bytes32 data");
       assert.equal(details[2], 999999999999, "Ending time should be set to default value");
       assert.equal(details[3], accounts[0], "Admin should be the sender of create campaign");
       assert.equal(details[4], true, "The campaign should allow multiple choices");
@@ -46,7 +51,9 @@ contract('KyVote', function(accounts) {
     var campaginID;
     return KyVote.deployed().then(function(instance) {
       kyVote = instance;
-      return kyVote.createCampaign("New campaign", ["option 1", "option 2"], ["url 1", "url 2"], 999999999999, true, [accounts[0]]);
+      var optionNames = [web3.fromAscii("option1"), web3.fromAscii("\n"), web3.fromAscii("option2"), web3.fromAscii("\n")];
+      var optionURLs = [web3.fromAscii("url1"), web3.fromAscii("\n"), web3.fromAscii("url2"), web3.fromAscii("\n")];
+      return kyVote.createCampaign([web3.fromAscii("New"), web3.fromAscii("campaign")], optionNames, optionURLs, 999999999999, true, [accounts[0]]);
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
@@ -69,7 +76,9 @@ contract('KyVote', function(accounts) {
     var campaignID;
     return KyVote.deployed().then(function(instance) {
       kyVote = instance;
-      return kyVote.createCampaign("New campaign", ["option 1", "option 2"], ["url 1", "url 2"], 999999999999, true, [accounts[0]]);
+      var optionNames = [web3.fromAscii("option1"), web3.fromAscii("\n"), web3.fromAscii("option2"), web3.fromAscii("\n")];
+      var optionURLs = [web3.fromAscii("url1"), web3.fromAscii("\n"), web3.fromAscii("url2"), web3.fromAscii("\n")];
+      return kyVote.createCampaign([web3.fromAscii("New"), web3.fromAscii("campaign")], optionNames, optionURLs, 999999999999, true, [accounts[0]]);
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
@@ -80,9 +89,9 @@ contract('KyVote', function(accounts) {
       //console.log("Created new campaign with ID: "+ campaignID);
     }).then(function(details) {
       assert.equal(details.length, 3, "Should return 3 arrays");
-      assert.equal(details[0].length, 2, "Should have 2 options");
-      assert.equal(details[1].length, 2, "Should have 2 options");
-      assert.equal(details[2].length, 2, "Should have 2 options");
+      assert.equal(details[0].length, 2, "Should return 2 elements in option ids");
+      assert.equal(details[1].length, 4, "Should return 4 elements in option names");
+      assert.equal(details[2].length, 4, "Should return 4 elements in option urls");
       let id0 = parseInt(BigNumber(details[0][0]));
       let id1 = parseInt(BigNumber(details[0][1]));
       assert.equal(id0, 0, "First option should have id 0");
@@ -113,7 +122,9 @@ contract('KyVote', function(accounts) {
     var campaginID;
     return KyVote.deployed().then(function(instance) {
       kyVote = instance;
-      return kyVote.createCampaign("New campaign", ["option 1", "option 2"], ["url 1", "url 2"], 999999999999, true, [accounts[0]]);
+      var optionNames = [web3.fromAscii("option1"), web3.fromAscii("\n"), web3.fromAscii("option2"), web3.fromAscii("\n")];
+      var optionURLs = [web3.fromAscii("url1"), web3.fromAscii("\n"), web3.fromAscii("url2"), web3.fromAscii("\n")];
+      return kyVote.createCampaign([web3.fromAscii("New"), web3.fromAscii("campaign")], optionNames, optionURLs, 999999999999, true, [accounts[0]]);
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
@@ -135,7 +146,9 @@ contract('KyVote', function(accounts) {
     var campaginID;
     return KyVote.deployed().then(function(instance) {
       kyVote = instance;
-      return kyVote.createCampaign("New campaign", ["option 1", "option 2"], ["url 1", "url 2"], 999999999999, true, [accounts[0]]);
+      var optionNames = [web3.fromAscii("option1"), web3.fromAscii("\n"), web3.fromAscii("option2"), web3.fromAscii("\n")];
+      var optionURLs = [web3.fromAscii("url1"), web3.fromAscii("\n"), web3.fromAscii("url2"), web3.fromAscii("\n")];
+      return kyVote.createCampaign([web3.fromAscii("New"), web3.fromAscii("campaign")], optionNames, optionURLs, 999999999999, true, [accounts[0]]);
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
@@ -162,7 +175,9 @@ contract('KyVote', function(accounts) {
     var campaignID;
     return KyVote.deployed().then(function(instance) {
       kyVote = instance;
-      return kyVote.createCampaign("New campaign", ["option 1", "option 2"], ["url 1", "url 2"], 999999999999, true, [accounts[0]]);
+      var optionNames = [web3.fromAscii("option1"), web3.fromAscii("\n"), web3.fromAscii("option2"), web3.fromAscii("\n")];
+      var optionURLs = [web3.fromAscii("url1"), web3.fromAscii("\n"), web3.fromAscii("url2"), web3.fromAscii("\n")];
+      return kyVote.createCampaign([web3.fromAscii("New"), web3.fromAscii("campaign")], optionNames, optionURLs, 999999999999, true, [accounts[0]]);
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
@@ -187,7 +202,9 @@ contract('KyVote', function(accounts) {
     var campaginID;
     return KyVote.deployed().then(function(instance) {
       kyVote = instance;
-      return kyVote.createCampaign("New campaign", ["option 1", "option 2"], ["url 1", "url 2"], 999999999999, true, [accounts[0]]);
+      var optionNames = [web3.fromAscii("option1"), web3.fromAscii("\n"), web3.fromAscii("option2"), web3.fromAscii("\n")];
+      var optionURLs = [web3.fromAscii("url1"), web3.fromAscii("\n"), web3.fromAscii("url2"), web3.fromAscii("\n")];
+      return kyVote.createCampaign([web3.fromAscii("New"), web3.fromAscii("campaign")], optionNames, optionURLs, 999999999999, true, [accounts[0]]);
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);
@@ -212,7 +229,9 @@ contract('KyVote', function(accounts) {
     var campaignID;
     return KyVote.deployed().then(function(instance) {
       kyVote = instance;
-      return kyVote.createCampaign("New campaign", ["option 1", "option 2"], ["url 1", "url 2"], 999999999999, true, [accounts[0]]);
+      var optionNames = [web3.fromAscii("option1"), web3.fromAscii("\n"), web3.fromAscii("option2"), web3.fromAscii("\n")];
+      var optionURLs = [web3.fromAscii("url1"), web3.fromAscii("\n"), web3.fromAscii("url2"), web3.fromAscii("\n")];
+      return kyVote.createCampaign([web3.fromAscii("New"), web3.fromAscii("campaign")], optionNames, optionURLs, 999999999999, true, [accounts[0]]);
     }).then(function(transaction) {
       numberCampaigns++;
       //console.log(transaction.logs[0].args);

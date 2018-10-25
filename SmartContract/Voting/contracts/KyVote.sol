@@ -1,14 +1,8 @@
 pragma solidity ^0.4.18;
 
-interface ERC20 {
-    function totalSupply() external view returns (uint supply);
+interface Token {
     function balanceOf(address _owner) external view returns (uint balance);
     function transfer(address _to, uint _value) external returns (bool success);
-    function transferFrom(address _from, address _to, uint _value) external returns (bool success);
-    function approve(address _spender, uint _value) external returns (bool success);
-    function allowance(address _owner, address _spender) external view returns (uint remaining);
-    function decimals() external view returns(uint digits);
-    event Approval(address indexed _owner, address indexed _spender, uint _value);
 }
 
 contract KyVote {
@@ -17,7 +11,7 @@ contract KyVote {
   address public owner;
 
   event WithdrawETH(uint amount);
-  event WithdrawToken(ERC20 token, uint amount);
+  event WithdrawToken(Token token, uint amount);
 
   modifier onlyOwner() {
     require(msg.sender == owner, "Only owner can call this function");
@@ -33,7 +27,7 @@ contract KyVote {
   }
 
   // Withdraw ERC token from contract to owner account
-  function withdrawToken(ERC20 token, uint amount) public onlyOwner returns (bool) {
+  function withdrawToken(Token token, uint amount) public onlyOwner returns (bool) {
     require(amount <= token.balanceOf(address(this)));
     token.transfer(msg.sender, amount);
     emit WithdrawToken(token, amount);
@@ -46,7 +40,7 @@ contract KyVote {
   }
 
   // Get contract token balance
-  function getContractTokenBalance(ERC20 token) public view returns (uint) {
+  function getContractTokenBalance(Token token) public view returns (uint) {
     return token.balanceOf(address(this));
   }
 
@@ -62,8 +56,8 @@ contract KyVote {
   //  voters: list of voter IDs that have voted for this option
   struct Option {
     uint id;
-    bytes32 name;
-    bytes32 url;
+    bytes32[] name;
+    bytes32[] url;
     address[] voters;
   }
 
@@ -76,8 +70,7 @@ contract KyVote {
   //  isMultipleChoices: is allowing multiple choices
   //  whitelistedAddresses: only these addresses can vote in this campaign
   struct Campaign {
-    //uint id;
-    bytes32 title;
+    bytes32[] title;
     mapping (uint => Option) options;
     uint optionCount;
     uint end;
@@ -92,42 +85,75 @@ contract KyVote {
   uint numberCampaigns;
 
   // Create new campaign with fully details of options, return campaign ID
-  // title: Title of campaign
+  // title: Title of campaign using array of bytes32
   // optionNames, optionURLs: list of names and urls for list of options
   // end: ending time for this campaign
   // isMultipleChoices: allow multiple choices vote or not
   // whitelistedAddresses: whitelisted addresses for this campaign, can be updated by admin
   // admin of the campaign is the sender
   function createCampaign(
-    bytes32 title,
+    bytes32[] memory title,
     bytes32[] memory optionNames,
     bytes32[] memory optionURLs,
     uint end,
     bool isMultipleChoices,
     address[] memory whitelistedAddresses
-  ) public payable returns (uint) {
-    require(optionNames.length == optionURLs.length, "Option names and urls should have same length");
-    require(optionNames.length > 0, "Option names and urls should not be empty");
+  ) public returns (uint) {
     require(end > now, "End time should greater than current block timestamp");
     // new campaign will have campaign ID equals the current number of campaigns
     // as new campaign is created, number of campaigns increases by 1
+    // each option name is a list of bytes32 (as it is a string)
+    // list of option names is an array of bytes32 separated by a \n
+    uint i;
+    uint j;
+
+    // count number of option names, each end with "\n"
+    uint optionNameCount = 0;
+    for(i = 0; i < optionNames.length; i++) {
+        if (optionNames[i] == bytes32("\n")) { optionNameCount++; }
+    }
+    require(optionNameCount > 0, "Should have options");
+
+    // count number of option urls, each end with "\n"
+    j = 0;
+    for(i = 0; i < optionURLs.length; i++) {
+        if (optionURLs[i] == bytes32("\n")) { j++; }
+    }
+    require(optionNameCount == j, "Number of names and urls should be the same");
+
+    // Create new campaign
     uint campaignID = numberCampaigns++;
-    // map the ID to the new campaign
+    // map the ID to the new campaign, data can not changed (except end time and whitelisted addresses)
     campaigns[campaignID] = Campaign({
       title: title,
       end: end,
       admin: msg.sender,
       isMultipleChoices: isMultipleChoices,
-      optionCount: optionNames.length
+      optionCount: optionNameCount
     });
-    Campaign storage camp = campaigns[campaignID];
-    // Adding list options to new campaign
-    for(uint i = 0; i < optionNames.length; i++) {
-        // Option ID is started from 0, map option ID to new option
-        camp.options[i] = Option({id: i, name: optionNames[i], url: optionURLs[i], voters: new address[](0)});
+
+    // Adding list options to new campaign, can not changed
+    i = 0; j = 0;
+    for(uint id = 0; id < optionNameCount; id++) {
+      // Count length of the option name id, omit "\n"
+      uint nameLen = 0;
+      while (nameLen + i < optionNames.length && optionNames[nameLen + i] != bytes32("\n")) { nameLen++; }
+      // Count length of the option url id, omit "\n"
+      uint urlLen = 0;
+      while (urlLen + j < optionNames.length && optionURLs[urlLen + j] != bytes32("\n")) { urlLen++; }
+      campaigns[campaignID].options[id] = Option({
+        id: id,
+        name: subArray(optionNames, i, nameLen),
+        url: subArray(optionURLs, j, urlLen),
+        voters: new address[](0)
+      });
+      // point to next option name and url
+      i += nameLen + 1;
+      j += urlLen + 1;
     }
+    // Adding whitelisted addresses to the campaign, can be modified later
     for(i = 0; i < whitelistedAddresses.length; i++) {
-        camp.whitelistedAddresses[whitelistedAddresses[i]] = true;
+        campaigns[campaignID].whitelistedAddresses[whitelistedAddresses[i]] = true;
     }
     emit AddCampaign(campaignID);
     return campaignID;
@@ -135,7 +161,7 @@ contract KyVote {
 
   // Update whitelisted addresses, add or remove whitelistedAddresses
   // Remove an address will also remove all of its voted options
-  function updateWhitelistedAddresses(uint campaignID, address[] memory addresses, bool isAdding) public payable {
+  function updateWhitelistedAddresses(uint campaignID, address[] memory addresses, bool isAdding) public {
     require(campaignID < numberCampaigns, "Campaign does not exist");
     Campaign storage camp = campaigns[campaignID];
     require(camp.admin == msg.sender, "Only campaign admin can call this function");
@@ -146,7 +172,7 @@ contract KyVote {
                 Option storage op = camp.options[j];
                 uint index = getIndexOfElementInArray(op.voters, addresses[i]);
                 if (index < op.voters.length) {
-                    // Delete element at index
+                    // Delete element at index 'index'
                     address temp = op.voters[index];
                     op.voters[index] = op.voters[op.voters.length - 1];
                     op.voters[op.voters.length - 1] = temp;
@@ -159,7 +185,7 @@ contract KyVote {
   }
 
   // Stop a campaign
-  function stopCampaign(uint campaignID) public payable {
+  function stopCampaign(uint campaignID) public {
     require(campaignID < numberCampaigns, "Campaign does not exist");
     require(campaigns[campaignID].admin == msg.sender, "Only campaign admin can stop the campaign"); // only admin can stop the campaign
     campaigns[campaignID].end = now;
@@ -167,7 +193,7 @@ contract KyVote {
   }
 
   // vote for options given list options and campaign ID, voter: id of voter, e.g: telegram id
-  function vote(uint campaignID, uint[] memory optionIDs) public payable {
+  function vote(uint campaignID, uint[] memory optionIDs) public {
     require(campaignID < numberCampaigns, "Campaign not found");
     Campaign storage camp = campaigns[campaignID];
     require(camp.end > now, "Campaign should be running");
@@ -232,7 +258,7 @@ contract KyVote {
   }
 
   // return campaignDetails without list of options, data returns include (id, title, end, admin, isMultipleChoices)
-  function getCampaignDetails(uint campaignID) public view returns (uint, bytes32, uint, address, bool) {
+  function getCampaignDetails(uint campaignID) public view returns (uint, bytes32[], uint, address, bool) {
     require(campaignID < numberCampaigns);
     return (
       campaignID,
@@ -259,21 +285,17 @@ contract KyVote {
   // return 3 arrays with list data of option IDs, option names, option URLs
   function getListOptions(uint campaignID) public view returns (uint[], bytes32[], bytes32[]) {
     require(campaignID < numberCampaigns);
-    uint count = campaigns[campaignID].optionCount;
-    uint[] memory ids = new uint[](count);
-    bytes32[] memory names = new bytes32[](count);
-    bytes32[] memory urls = new bytes32[](count);
-    for (uint i = 0; i < count; i++) {
-      Option storage op4 = campaigns[campaignID].options[i];
-      ids[i] = op4.id;
-      names[i] = op4.name;
-      urls[i] = op4.url;
+    uint[] memory ids = new uint[](campaigns[campaignID].optionCount);
+    for(uint i = 0; i < campaigns[campaignID].optionCount; i++) {
+      ids[i] = i;
     }
+    bytes32[] memory names = optionNamesFromCampaign(campaignID);
+    bytes32[] memory urls = optionURLsFromCampaign(campaignID);
     return (ids, names, urls);
   }
 
   // get fully details of an option given its ID and campaignID, (id, name, url, voters)
-  function getOption(uint campaignID, uint optionID) public view returns (uint, bytes32, bytes32, address[]) {
+  function getOption(uint campaignID, uint optionID) public view returns (uint, bytes32[], bytes32[], address[]) {
     require(campaignID < numberCampaigns);
     require(optionID < campaigns[campaignID].optionCount);
     return (
@@ -313,5 +335,51 @@ contract KyVote {
       if (array[i] == element) { return i; }
     }
     return array.length;
+  }
+
+  function subArray(bytes32[] memory array, uint start, uint len) internal pure returns (bytes32[]) {
+    bytes32[] memory result = new bytes32[](len);
+    for(uint i = 0 ; i < len; i++) {
+      result[i] = array[i + start];
+    }
+    return result;
+  }
+
+  function optionNamesFromCampaign(uint campaignID) internal view returns (bytes32[]) {
+    uint optionNameCount = campaigns[campaignID].optionCount;
+    uint i;
+    uint j;
+    for(i = 0; i < campaigns[campaignID].optionCount; i++) {
+        optionNameCount += campaigns[campaignID].options[i].name.length;
+    }
+    bytes32[] memory names = new bytes32[](optionNameCount);
+    uint nameCount = 0;
+    for (i = 0; i < campaigns[campaignID].optionCount; i++) {
+        Option storage op = campaigns[campaignID].options[i];
+        for(j = 0; j < op.name.length; j++) {
+            names[nameCount++] = op.name[j];
+        }
+        names[nameCount++] = bytes32("\n");
+    }
+    return names;
+  }
+
+  function optionURLsFromCampaign(uint campaignID) internal view returns (bytes32[]) {
+    uint optionURLCount = campaigns[campaignID].optionCount;
+    uint i;
+    uint j;
+    for(i = 0; i < campaigns[campaignID].optionCount; i++) {
+        optionURLCount += campaigns[campaignID].options[i].url.length;
+    }
+    bytes32[] memory urls = new bytes32[](optionURLCount);
+    uint urlCount = 0;
+    for (i = 0; i < campaigns[campaignID].optionCount; i++) {
+        Option storage op = campaigns[campaignID].options[i];
+        for(j = 0; j < op.url.length; j++) {
+            urls[urlCount++] = op.url[j];
+        }
+        urls[urlCount++] = bytes32("\n");
+    }
+    return urls;
   }
 }
